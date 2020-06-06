@@ -37,6 +37,7 @@ RUN pip3 install opencv-python matplotlib rospkg catkin_pkg scipy
 RUN apt-get install -y libavformat-dev libavdevice-dev
 RUN apt-get install -y libsm6 libxext6 libxrender-dev
 RUN pip3 install av==6.1.2
+RUN pip2 install av==6.1.2
 
 
 ## Pycharm installation
