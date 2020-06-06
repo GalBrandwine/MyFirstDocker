@@ -1,52 +1,66 @@
-### based on ubuntu 16.04 with ros kinetic
-FROM ros:kinetic
+## based on ubuntu 18.04 with ros ${ROSDISTRO}
+FROM osrf/ros:melodic-desktop-full
 
-ENV DEBIAN_FRONTEND noninteractive
+LABEL maintainer "Gal Brandwine <gal080592@gmail.com>"
+# Configurations
+ARG DEVELOPER=gal
+ARG ROSDISTRO=melodic
+ARG PYCHARM_VERSION=2020.2
+ARG PYCHARM_BUILD=202.5103.19
 
-RUN apt-get update
-RUN apt-get install -y software-properties-common
 
-RUN add-apt-repository -y ppa:ubuntu-desktop/ubuntu-make
-RUN apt-get update
-RUN apt-get install -y openjdk-8-jre-headless
-RUN apt-get install -y ubuntu-make
-RUN apt-get install -y python3-pip \
-gedit \
-python3-tk \
-python3-yaml \
-python-catkin-tools \
-python3-dev \
-python3-numpy \
-ros-kinetic-cv-bridge
+## nvidia-container-runtime
+ENV NVIDIA_VISIBLE_DEVICES \
+    ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES \
+    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
-RUN pip3 install --upgrade pip==9.0.3
+## Dependencies
+RUN apt-get update && apt-get install --no-install-recommends -y \
+  python python-dev python-setuptools python-pip \
+  python3 python3-dev python3-numpy python3-setuptools python3-pip python3-tk python3-yaml \
+  gcc git openssh-client less curl \
+  libxtst-dev libxext-dev libxrender-dev libfreetype6-dev \
+  libfontconfig1 libgtk2.0-0 libxslt1.1 libxxf86vm1 \
+  gedit \
+  python-catkin-tools \
+  ros-${ROSDISTRO}-cv-bridge
+
+RUN rm -rf /var/lib/apt/lists/*
+RUN useradd -ms /bin/bash ${DEVELOPER}
+
+
+RUN pip3 install --upgrade pip
 RUN pip install opencv-python matplotlib rospkg catkin_pkg scipy
 
-## pycharm installation
-RUN umake ide pycharm /root/.local/share/umake/ide/pycharm
 
-## this part is for compiling cv_bridge for python3
-WORKDIR /usr/lib/x86_64-linux-gnu/
-RUN ln -s libboost_python-py35.so libboost_python3.so
-RUN mkdir /root/catkin_build_ws
-WORKDIR   /root/catkin_build_ws
-RUN catkin config -DPYTHON_EXECUTABLE=/usr/bin/python3 -DPYTHON_INCLUDE_DIR=/usr/include/python3.5m -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.5m.so
-RUN catkin config --install
-RUN mkdir src
-WORKDIR /root/catkin_build_ws/src
-RUN git clone -b kinetic https://github.com/ros-perception/vision_opencv.git
-WORKDIR /root/catkin_build_ws 
-RUN /bin/bash -c "source /opt/ros/kinetic/setup.bash && catkin build cv_bridge"
 
-## copying data to docker and add settings 
-RUN mkdir /root/work/
-RUN mkdir /root/work/shared/
-RUN mkdir /root/PycharmProjects/
-WORKDIR /root/
-COPY root .
+## Pycharm installation
+ARG pycharm_source=https://download.jetbrains.com/python/pycharm-community-${PYCHARM_BUILD}.tar.gz
+ARG pycharm_local_dir=.PyCharmCE${PYCHARM_VERSION}
+
+WORKDIR /opt/pycharm
+
+RUN curl -fsSL $pycharm_source -o /opt/pycharm/installer.tgz \
+  && tar --strip-components=1 -xzf installer.tgz \
+  && rm installer.tgz
+
+USER ${DEVELOPER}
+ENV HOME /home/${DEVELOPER}
+
+RUN mkdir /home/${DEVELOPER}/.PyCharm \
+  && ln -sf /home/${DEVELOPER}/.PyCharm /home/${DEVELOPER}/$pycharm_local_dir
+
+
+## copying data to docker and add settings
 WORKDIR /
 COPY ros_entrypoint.sh .
+USER root
 RUN chmod +x ros_entrypoint.sh
-RUN echo "alias pycharm='/root/.local/share/umake/ide/pycharm/bin/pycharm.sh'" >> /root/.bashrc
 
+## Creating catkin_ws
+USER root
+ENV CATKIN_WS=/home/${DEVELOPER}/catkin_ws
+RUN /bin/bash -c "mkdir -p $CATKIN_WS/src && cd $CATKIN_WS && source /opt/ros/melodic/setup.bash && catkin_make"
 
+WORKDIR $CATKIN_WS
