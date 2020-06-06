@@ -8,6 +8,8 @@ docker run -it \
 --privileged \
 --net=host \
 --env="QT_X11_NO_MITSHM=1" \
+--gpus=all \
 --runtime=nvidia \
+--name=tello_ros_docker \
 ros_ubuntu_18 \
 bash

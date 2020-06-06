@@ -31,8 +31,12 @@ RUN useradd -ms /bin/bash ${DEVELOPER}
 
 
 RUN pip3 install --upgrade pip
-RUN pip install opencv-python matplotlib rospkg catkin_pkg scipy
+RUN pip3 install opencv-python matplotlib rospkg catkin_pkg scipy
 
+## AV library dependencies (For the TelloDrone)
+RUN apt-get install -y libavformat-dev libavdevice-dev
+RUN apt-get install -y libsm6 libxext6 libxrender-dev
+RUN pip3 install av==6.1.2
 
 
 ## Pycharm installation
@@ -63,4 +67,5 @@ USER root
 ENV CATKIN_WS=/home/${DEVELOPER}/catkin_ws
 RUN /bin/bash -c "mkdir -p $CATKIN_WS/src && cd $CATKIN_WS && source /opt/ros/melodic/setup.bash && catkin_make"
 
+# USER ${DEVELOPER}
 WORKDIR $CATKIN_WS
